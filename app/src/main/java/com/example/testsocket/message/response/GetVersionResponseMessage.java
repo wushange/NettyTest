@@ -1,4 +1,6 @@
-package com.example.testsocket.message;
+package com.example.testsocket.message.response;
+
+import com.example.testsocket.message.BaseMessage;
 
 public class GetVersionResponseMessage extends BaseMessage {
     @Override

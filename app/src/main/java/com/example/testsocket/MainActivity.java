@@ -1,30 +1,32 @@
 package com.example.testsocket;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.text.TextUtils;
-import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ScrollView;
 import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.blankj.utilcode.constant.PermissionConstants;
 import com.blankj.utilcode.util.ConvertUtils;
+import com.blankj.utilcode.util.EncodeUtils;
+import com.blankj.utilcode.util.FileIOUtils;
+import com.blankj.utilcode.util.FileUtils;
 import com.blankj.utilcode.util.ImageUtils;
 import com.blankj.utilcode.util.LogUtils;
-import com.blankj.utilcode.util.NumberUtils;
-import com.blankj.utilcode.util.ResourceUtils;
-import com.blankj.utilcode.util.StringUtils;
+import com.blankj.utilcode.util.PermissionUtils;
+import com.blankj.utilcode.util.SDCardUtils;
 import com.blankj.utilcode.util.ToastUtils;
 import com.easysocket.EasySocket;
 import com.easysocket.config.EasySocketOptions;
@@ -33,19 +35,15 @@ import com.easysocket.entity.SocketAddress;
 import com.easysocket.interfaces.conn.ISocketActionListener;
 import com.easysocket.interfaces.conn.SocketActionListener;
 import com.easysocket.utils.LogUtil;
-import com.example.testsocket.message.GetDeviceIdRequestMessage;
-import com.example.testsocket.message.GetVersionRequestMessage;
+import com.example.testsocket.message.request.GetIdRequestMessage;
+import com.example.testsocket.message.request.GetVersionRequestMessage;
+import com.example.testsocket.message.request.WriteFileRequestMessage;
 import com.example.testsocket.netty.NettyClient;
 import com.example.testsocket.utils.ImageGenerator;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.Socket;
-import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -61,9 +59,13 @@ public class MainActivity extends AppCompatActivity {
     private  Button btnBitmap;
     private TextView textViewResponse;
     private Spinner protocolSpinner;
+
+    private Button btnFile;
     private ArrayAdapter<String> protocolAdapter;
     private HashMap<String, String> protocolMap;
+    int offset = 0;
 
+    List<String> fileLines;
     private NettyClient client;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,6 +80,7 @@ public class MainActivity extends AppCompatActivity {
         btnSend = findViewById(R.id.buttonSend);
         btnClear = findViewById(R.id.buttonClear);
         btnBitmap = findViewById(R.id.buttonBitmap);
+        btnFile = findViewById(R.id.buttonFile);
         textViewResponse = findViewById(R.id.textViewResponse);
 
         protocolSpinner = findViewById(R.id.protocol_spinner);
@@ -131,6 +134,41 @@ public class MainActivity extends AppCompatActivity {
                 }
             }
         });
+
+        btnFile.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                String filePath = SDCardUtils.getSDCardPathByEnvironment() + "/a.pdf";
+                fileLines  = FileIOUtils.readFile2List(filePath);
+                if (offset < fileLines.size()) {
+                    String data = fileLines.get(offset);
+                    String filedata = EncodeUtils.base64Encode2String(data.getBytes());
+                    LogUtils.e("data : "+filedata);
+                    String writeFileCommand = new WriteFileRequestMessage("data","wsg.pdf",offset,filedata).buildMessage();
+                    LogUtils.e(writeFileCommand);
+                    offset++;
+                } else {
+                    LogUtils.e("File transfer completed.");
+                }
+//                sendFile( );
+            }
+
+
+        });
+
+        PermissionUtils.permission(PermissionConstants.STORAGE)
+                .callback(new PermissionUtils.SimpleCallback() {
+                    @Override
+                    public void onGranted() {
+                        LogUtils.e("onGranted");
+                    }
+
+                    @Override
+                    public void onDenied() {
+                        LogUtils.e("onDenied");
+                    }
+                }).request();
         // 初始化协议选项
         initializeProtocols();
         // 设置下拉框适配器
@@ -156,6 +194,23 @@ public class MainActivity extends AppCompatActivity {
         protocolSpinner.setSelection(0);
     }
 
+    private void sendFile( ) {
+        if (offset < fileLines.size()) {
+            String data = fileLines.get(offset);
+            LogUtils.e("data : "+data);
+            String filedata = EncodeUtils.base64Encode2String(data.getBytes());
+            String writeFileCommand = new WriteFileRequestMessage("data","wsg.pdf",offset,filedata).buildMessage();
+
+            LogUtils.e(writeFileCommand);
+            if (client != null) {
+                client.sendData(writeFileCommand);
+            }
+            offset++;
+        } else {
+           LogUtils.e("File transfer completed.");
+        }
+    }
+
     /**
      * 初始化EasySocket
      */
@@ -175,7 +230,7 @@ public class MainActivity extends AppCompatActivity {
     private void initializeProtocols() {
         // 在这里添加你需要调试的通信协议及其对应的命令格式
         protocolMap = new HashMap<>();
-        protocolMap.put("查询听诊器 ID", new GetDeviceIdRequestMessage().buildMessage());
+        protocolMap.put("查询听诊器 ID", new GetIdRequestMessage().buildMessage());
         protocolMap.put("查询终端版本号", new GetVersionRequestMessage().buildMessage());
         // 添加更多协议...
     }
@@ -183,6 +238,7 @@ public class MainActivity extends AppCompatActivity {
 
 
     private final Handler handler = new Handler() {
+        @SuppressLint("HandlerLeak")
         @Override
         public void handleMessage(@NonNull Message msg) {
             LogUtils.e(msg.obj);
@@ -193,6 +249,19 @@ public class MainActivity extends AppCompatActivity {
                 case 1:
                     String result = ConvertUtils.bytes2String((byte[]) msg.obj);
                     textViewResponse.append("\r\n服务端返回消息："+result);
+
+                    if (result.startsWith("$RETWRITE")) {
+                        // Parse response to get status and offset
+                        String[] parts = result.split(",");
+                        if (parts.length > 1 && "ok".equals(parts[0].substring(9))) {
+                            LogUtils.e("继续发送文件");
+                            sendFile( );
+                        } else {
+                            System.err.println("Error in response: " + msg);
+                        }
+                    }
+                    break;
+                default:
                     break;
             }
 

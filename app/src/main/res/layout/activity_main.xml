@@ -60,18 +60,22 @@
         android:layout_below="@id/editTextCommand"
         android:text="发送" />
         <Button
-            android:layout_marginStart="20dp"
             android:id="@+id/buttonClear"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_below="@id/editTextCommand"
             android:text="清空日志" />
         <Button
-            android:layout_marginStart="20dp"
             android:id="@+id/buttonBitmap"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="生成图片" />
+
+        <Button
+            android:id="@+id/buttonFile"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="写入文件" />
     </LinearLayout>
     <TextView
         android:id="@+id/textViewResponse"
