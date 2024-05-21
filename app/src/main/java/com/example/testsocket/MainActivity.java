@@ -35,12 +35,16 @@ import com.easysocket.entity.SocketAddress;
 import com.easysocket.interfaces.conn.ISocketActionListener;
 import com.easysocket.interfaces.conn.SocketActionListener;
 import com.easysocket.utils.LogUtil;
+import com.example.testsocket.message.request.GetFileListRequestMessage;
 import com.example.testsocket.message.request.GetIdRequestMessage;
 import com.example.testsocket.message.request.GetVersionRequestMessage;
 import com.example.testsocket.message.request.WriteFileRequestMessage;
 import com.example.testsocket.netty.NettyClient;
+import com.example.testsocket.utils.FileDownload;
+import com.example.testsocket.utils.FileTransfer;
 import com.example.testsocket.utils.ImageGenerator;
 
+import java.io.IOException;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -57,14 +61,18 @@ public class MainActivity extends AppCompatActivity {
 
     private  Button btnClear;
     private  Button btnBitmap;
+    private Button btnFiles;
     private TextView textViewResponse;
     private Spinner protocolSpinner;
 
     private Button btnFile;
+
+    private Button btnDownload;
     private ArrayAdapter<String> protocolAdapter;
     private HashMap<String, String> protocolMap;
     int offset = 0;
-
+    FileTransfer fileTransfer;
+    FileDownload fileDownload;
     List<String> fileLines;
     private NettyClient client;
     @Override
@@ -81,6 +89,8 @@ public class MainActivity extends AppCompatActivity {
         btnClear = findViewById(R.id.buttonClear);
         btnBitmap = findViewById(R.id.buttonBitmap);
         btnFile = findViewById(R.id.buttonFile);
+        btnFiles = findViewById(R.id.buttonFiles);
+        btnDownload = findViewById(R.id.buttonDownload);
         textViewResponse = findViewById(R.id.textViewResponse);
 
         protocolSpinner = findViewById(R.id.protocol_spinner);
@@ -139,22 +149,43 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
 
-                String filePath = SDCardUtils.getSDCardPathByEnvironment() + "/a.pdf";
-                fileLines  = FileIOUtils.readFile2List(filePath);
-                if (offset < fileLines.size()) {
-                    String data = fileLines.get(offset);
-                    String filedata = EncodeUtils.base64Encode2String(data.getBytes());
-                    LogUtils.e("data : "+filedata);
-                    String writeFileCommand = new WriteFileRequestMessage("data","wsg.pdf",offset,filedata).buildMessage();
-                    LogUtils.e(writeFileCommand);
-                    offset++;
-                } else {
-                    LogUtils.e("File transfer completed.");
+                String filePath = SDCardUtils.getSDCardPathByEnvironment() + "/abc.pdf";
+                try {
+                    fileTransfer = new FileTransfer(client, filePath);
+
+                    fileTransfer.sendFile();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
                 }
-//                sendFile( );
             }
 
 
+        });
+
+        btnDownload.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                String filePath = SDCardUtils.getSDCardPathByEnvironment() + "/abccopy.pdf";
+                try {
+                    fileDownload = new FileDownload(client,"abc.pdf" ,filePath);
+                    fileDownload.readFile();
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        btnFiles.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                GetFileListRequestMessage getFileListRequestMessage = new GetFileListRequestMessage();
+                if(client!=null){
+                    client.sendData(getFileListRequestMessage.buildMessage());
+                }
+            }
         });
 
         PermissionUtils.permission(PermissionConstants.STORAGE)
@@ -195,6 +226,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void sendFile( ) {
+        LogUtils.e("offset : "+offset);
+        LogUtils.e("fileLines.size() : "+fileLines.size());
         if (offset < fileLines.size()) {
             String data = fileLines.get(offset);
             LogUtils.e("data : "+data);
@@ -206,6 +239,16 @@ public class MainActivity extends AppCompatActivity {
                 client.sendData(writeFileCommand);
             }
             offset++;
+        } else if (offset==fileLines.size()) {
+            String data = fileLines.get(offset-1);
+            LogUtils.e("data : "+data);
+            String filedata = EncodeUtils.base64Encode2String(data.getBytes());
+            String writeFileCommand = new WriteFileRequestMessage("end","wsg.pdf",offset,filedata).buildMessage();
+
+            LogUtils.e(writeFileCommand);
+            if (client != null) {
+                client.sendData(writeFileCommand);
+            }
         } else {
            LogUtils.e("File transfer completed.");
         }
@@ -237,11 +280,10 @@ public class MainActivity extends AppCompatActivity {
 
 
 
+    @SuppressLint("HandlerLeak")
     private final Handler handler = new Handler() {
-        @SuppressLint("HandlerLeak")
         @Override
         public void handleMessage(@NonNull Message msg) {
-            LogUtils.e(msg.obj);
             switch (msg.what) {
                 case 203:
                     textViewResponse.append("\r\n客户端消息：" + msg.obj);
@@ -249,16 +291,17 @@ public class MainActivity extends AppCompatActivity {
                 case 1:
                     String result = ConvertUtils.bytes2String((byte[]) msg.obj);
                     textViewResponse.append("\r\n服务端返回消息："+result);
-
                     if (result.startsWith("$RETWRITE")) {
-                        // Parse response to get status and offset
-                        String[] parts = result.split(",");
-                        if (parts.length > 1 && "ok".equals(parts[0].substring(9))) {
+                        LogUtils.e("返回结果："+result);
+                        if(result.contains("ok")){
                             LogUtils.e("继续发送文件");
-                            sendFile( );
-                        } else {
-                            System.err.println("Error in response: " + msg);
+                            fileTransfer.onAckReceived();
                         }
+                    }
+                    if (result.startsWith("$RETREAD")) {
+                        LogUtils.e("下载文件返回结果："+result);
+                            LogUtils.e("继续发送文件");
+                            fileDownload.onAckReceived(result);
                     }
                     break;
                 default:
