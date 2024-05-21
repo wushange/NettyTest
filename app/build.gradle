@@ -22,6 +22,12 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    externalNativeBuild {
+        cmake {
+            path file('src/main/cpp/CMakeLists.txt')
+            version '3.22.1'
+        }
+    }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
@@ -34,6 +40,7 @@ dependencies {
     implementation 'com.google.android.material:material:1.8.0'
     implementation 'com.github.jiusetian:EasySocket:2.1.1'
     implementation 'io.netty:netty-all:5.0.0.Alpha2'
+    implementation 'com.github.wendykierp:JTransforms:3.1'
     implementation 'com.blankj:utilcodex:1.31.1'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
