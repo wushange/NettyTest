@@ -21,8 +21,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.blankj.utilcode.constant.PermissionConstants;
 import com.blankj.utilcode.util.ConvertUtils;
 import com.blankj.utilcode.util.EncodeUtils;
-import com.blankj.utilcode.util.FileIOUtils;
-import com.blankj.utilcode.util.FileUtils;
 import com.blankj.utilcode.util.ImageUtils;
 import com.blankj.utilcode.util.LogUtils;
 import com.blankj.utilcode.util.PermissionUtils;
@@ -41,11 +39,11 @@ import com.example.testsocket.message.request.GetVersionRequestMessage;
 import com.example.testsocket.message.request.WriteFileRequestMessage;
 import com.example.testsocket.netty.NettyClient;
 import com.example.testsocket.utils.FileDownload;
+import com.example.testsocket.utils.FileDownloadOld;
 import com.example.testsocket.utils.FileTransfer;
 import com.example.testsocket.utils.ImageGenerator;
 
 import java.io.IOException;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 
