@@ -50,16 +50,16 @@ public class FileTransfer {
 
         client.sendData(command);
         LogUtils.e("Sent command: " + command);
-            offset += bytesRead;
+        offset += bytesRead;
     }
 
     public void onAckReceived() {
         LogUtils.e("ACK received.");
-            try {
-                sendNextChunk();
-            } catch (IOException | InterruptedException e) {
-                LogUtils.e("Error sending next chunk: " + e.getMessage());
-            }
+        try {
+            sendNextChunk();
+        } catch (IOException | InterruptedException e) {
+            LogUtils.e("Error sending next chunk: " + e.getMessage());
+        }
     }
 
     public void onErrorReceived() {
@@ -70,7 +70,7 @@ public class FileTransfer {
     private String buildCommand(String state, String fileName, long offset, String data) {
         String command = String.format("$WRITEFILE %s,%s,%d,%s*", state, fileName, offset, data);
         long checksum = calculateChecksum(command);
-        return command + checksum +"\r\n";
+        return command + checksum + "\r\n";
     }
 
     private long calculateChecksum(String command) {

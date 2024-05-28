@@ -1,6 +1,6 @@
 package com.example.testsocket.message;
 
-public class MessageType {
+public class CommandType {
     /**
      * 查询听诊器 ID
      */
@@ -48,4 +48,11 @@ public class MessageType {
      */
     public static final String MCU_WRITEFILE = "$WRITEFILE";
     public static final String MCU_RETWRITE = "$RETWRITE";
+
+
+    /**
+     * 删除文件
+     */
+    public static final String MCU_DELETEFILE = "$DELFlLE";
+    public static final String MCU_RETDELETEFILE = "$DELFlLE";
 }
