@@ -15,9 +15,11 @@ public class FileDownload {
     private FileOutputStream fos;
     private String fileName;
 
-    public FileDownload(NettyClient client, String fileName, String filePath) throws IOException {
+    private  FileDownloadListener fileDownloadListener;
+    public FileDownload(NettyClient client, String fileName, String filePath,FileDownloadListener listener) throws IOException {
         this.client = client;
         this.fileName = fileName;
+        this.fileDownloadListener=listener;
         FileUtils.createOrExistsFile(filePath);
         fos = new FileOutputStream(filePath);
     }
@@ -35,15 +37,7 @@ public class FileDownload {
     public void onAckReceived(String result) {
         LogUtils.e("ACK received: " + result);
         try {
-            String[] parts = result.split("\\*");
-            if (parts.length != 2) {
-                LogUtils.e("Invalid response format");
-                return;
-            }
-            
-            String payload = parts[0].substring("$RETWRITE ".length());
-            String[] params = payload.split(",");
-            
+            String[] params = result.split(",");
             if (params.length != 4) {
                 LogUtils.e("Invalid parameter count");
                 return;
@@ -60,6 +54,7 @@ public class FileDownload {
             if (state.equals("end")) {
                 fos.write(fileData);
                 fos.close();
+                fileDownloadListener.onFileDownloadComplete();
                 LogUtils.e("File download completed.");
             } else {
                 fos.write(fileData);
@@ -92,5 +87,9 @@ public class FileDownload {
         CRC32 crc32 = new CRC32();
         crc32.update(command.getBytes());
         return crc32.getValue();
+    }
+
+    public interface FileDownloadListener {
+        void onFileDownloadComplete();
     }
 }

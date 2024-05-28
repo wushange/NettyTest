@@ -35,7 +35,9 @@ dependencies {
 
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.8.0'
+    implementation 'com.github.li-xiaojun:XPopup:2.10.0'
 
+    implementation 'androidx.recyclerview:recyclerview:1.2.1'
     implementation 'io.netty:netty-all:5.0.0.Alpha2'
     implementation 'com.blankj:utilcodex:1.31.1'
     testImplementation 'junit:junit:4.13.2'

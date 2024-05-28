@@ -18,13 +18,17 @@ public class FileTransfer {
     private final NettyClient client;
     private final String filePath;
     private FileInputStream fis;
+
+    private File file;
     private long fileSize;
     private long offset;
+    private FileTransferListener fileTransferListener;
 
-    public FileTransfer(NettyClient client, String filePath) throws IOException {
+    public FileTransfer(NettyClient client, String filePath,FileTransferListener listener) throws IOException {
         this.client = client;
         this.filePath = filePath;
-        File file = new File(filePath);
+        this.fileTransferListener = listener;
+        this.file = new File(filePath);
         this.fis = new FileInputStream(file);
         this.fileSize = file.length();
         this.offset = 0;
@@ -41,12 +45,13 @@ public class FileTransfer {
         if (bytesRead == -1) {
             fis.close();
             LogUtils.e("File transfer completed.");
+            fileTransferListener.onFileTransferComplete();
             return;
         }
 
         String state = (offset + bytesRead == fileSize) ? "end" : "data";
         String base64Data = Base64.encodeToString(buffer, 0, bytesRead, Base64.NO_WRAP);
-        String command = buildCommand(state, new File(filePath).getName(), offset, base64Data);
+        String command = buildCommand(state, file.getName(), offset, base64Data);
 
         client.sendData(command);
         LogUtils.e("Sent command: " + command);
@@ -77,5 +82,9 @@ public class FileTransfer {
         CRC32 crc32 = new CRC32();
         crc32.update(command.getBytes());
         return crc32.getValue();
+    }
+
+    public  interface FileTransferListener {
+        void onFileTransferComplete();
     }
 }

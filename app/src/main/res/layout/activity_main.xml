@@ -76,6 +76,13 @@
             android:text="下载文件" />
 
         <Button
+            android:id="@+id/btn_delete_file"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_columnWeight="1"
+            android:text="删除文件" />
+
+        <Button
             android:id="@+id/btn_set_sleep_time"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
